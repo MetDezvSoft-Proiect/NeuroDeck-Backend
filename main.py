@@ -79,7 +79,7 @@ def start_sesiune():
     print("\n" + "="*50)
     print(" 📝 INCEPE SESIUNEA DE TESTARE ")
     print("="*50 + "\n")
-
+    #test
     intrebari_corecte = 0
     rezultate_finale = [] 
 
