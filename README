@@ -1,0 +1,129 @@
+# NeuroDeck Backend
+
+NeuroDeck Backend este API-ul care alimentează aplicația NeuroDeck. El gestionează autentificarea utilizatorilor, prelucrarea PDF-urilor încărcate, generarea flashcards-urilor și evaluarea răspunsurilor cu ajutorul modelelor AI.
+
+## Ce face backendul
+
+- creează și autentifică utilizatori
+- primește unul sau mai multe fișiere PDF
+- extrage textul din documente și îl împarte în bucăți mai mici pentru procesare
+- generează flashcards printr-un model LLM local prin Ollama
+- evaluează răspunsurile utilizatorului prin comparație semantică
+- returnează datele într-un format ușor de consumat de frontend
+
+## Stack tehnic
+
+- FastAPI pentru API-ul HTTP
+- SQLAlchemy pentru persistenta datelor
+- SQLite ca bază de date locală în MVP
+- Pydantic pentru scheme și validare
+- pypdf pentru extragerea textului din PDF-uri
+- Ollama pentru generarea întrebărilor și răspunsurilor
+- sentence-transformers pentru evaluarea semantică a răspunsurilor
+
+## Arhitectura proiectului
+
+- `app/main.py` definește aplicația FastAPI și rutele principale
+- `app/models.py` conține modelele SQLAlchemy pentru utilizatori, documente și flashcards
+- `app/schemas.py` definește schemele Pydantic pentru request și response
+- `app/crud.py` conține operațiile de bază pe baza de date
+- `app/database.py` configurează conexiunea la baza de date și sesiunea SQLAlchemy
+- `app/document_processor.py` extrage textul din PDF-uri
+- `app/ai_agents.py` generează flashcards și evaluează răspunsuri
+- `app/utils.py` parsează outputul generat de model în structura folosită de frontend
+
+## Fluxul aplicației
+
+1. Utilizatorul se înregistrează sau se autentifică.
+2. Frontendul trimite PDF-urile la endpointul `POST /upload`.
+3. Backendul salvează temporar fișierele, extrage textul și cere modelului AI să genereze întrebări.
+4. Răspunsul AI este convertit în structură JSON de flashcards.
+5. Utilizatorul răspunde la întrebări în frontend.
+6. Frontendul apelează `POST /evaluate` pentru fiecare răspuns.
+7. Backendul calculează scorul și returnează verdictul `CORECT` sau `INCORECT`.
+
+## Endpointuri disponibile
+
+- `GET /` returnează un mesaj simplu de status
+- `POST /users/` creează un cont nou
+- `POST /login` validează datele de autentificare
+- `POST /upload` primește PDF-uri și generează flashcards
+- `POST /evaluate` evaluează un răspuns față de răspunsul corect
+
+## Modelul de date
+
+Backendul folosește trei entități principale:
+
+- `User` pentru conturile utilizatorilor
+- `Document` pentru PDF-urile încărcate și textul extras
+- `Flashcard` pentru întrebările și răspunsurile generate
+
+Relațiile sunt:
+
+- un utilizator poate avea mai multe documente
+- un document poate avea mai multe flashcards
+- fiecare flashcard aparține unui document
+
+## Cerințe
+
+- Python 3.10 sau mai nou
+- un mediu virtual Python activ
+- Ollama instalat și pornit local
+- modelul `llama3` disponibil în Ollama
+- modelul `paraphrase-multilingual-MiniLM-L12-v2` disponibil pentru `sentence-transformers`
+
+## Instalare și rulare
+
+Dacă nu ai deja dependențele instalate, creează un mediu virtual și instalează pachetele folosite de aplicație.
+
+```bash
+pip install fastapi uvicorn sqlalchemy pydantic pydantic[email] pypdf ollama sentence-transformers
+```
+
+Pornire server:
+
+```bash
+uvicorn app.main:app --reload
+```
+
+Backendul va rula, de regulă, la `http://localhost:8000`.
+
+## Integrare cu frontendul
+
+Frontendul trimite cereri către acest backend la:
+
+- `http://localhost:8000/login`
+- `http://localhost:8000/users/`
+- `http://localhost:8000/upload`
+- `http://localhost:8000/evaluate`
+
+Dacă schimbi portul sau hostul, trebuie actualizată și constanta `API_BASE_URL` din frontend.
+
+## Observații importante
+
+- fișierele PDF sunt stocate temporar în folderul `temp_pdfs`
+- folderul temporar este șters după generarea flashcards-urilor
+- autentificarea din MVP folosește o parolă hash-uită simplificat, nu un mecanism de producție
+- scorul de evaluare depinde de similaritatea semantică și de nivelul de severitate ales
+
+## Dezvoltare locală
+
+Pentru o iterație rapidă:
+
+- pornește Ollama local
+- asigură-te că modelul `llama3` este descărcat
+- pornește backendul cu `uvicorn app.main:app --reload`
+- pornește frontendul și verifică fluxul complet de la upload la rezultate
+
+## Posibile îmbunătățiri
+
+- hash criptografic real pentru parole
+- endpointuri dedicate pentru istoricul sesiunilor
+- salvarea flashcards-urilor în baza de date
+- suport pentru alte tipuri de documente
+- control mai bun al erorilor și validării fișierelor
+- configurare externă pentru URL-ul Ollama și baza de date
+
+## Notă
+
+Acesta este un backend de MVP, optimizat pentru a demonstra fluxul complet de la document PDF la flashcards și evaluare. Pentru producție, sunt necesare îmbunătățiri de securitate, configurare și observabilitate.
