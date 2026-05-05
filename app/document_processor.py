@@ -29,6 +29,25 @@ def extrage_text_din_toate_pdf(folder_path):
             
     return text_complet
 
+def extrage_text_dintr_un_pdf(cale_pdf):
+    """Extrage text dintr-un singur fisier PDF."""
+    if not os.path.exists(cale_pdf):
+        print(f"❌ Eroare: Fisierul '{cale_pdf}' nu exista.")
+        return None
+    
+    text_complet = ""
+    try:
+        reader = PdfReader(cale_pdf)
+        for pagina in reader.pages:
+            text_extras = pagina.extract_text()
+            if text_extras:
+                text_complet += text_extras + "\n"
+    except Exception as e:
+        print(f"❌ Eroare la citirea PDF: {e}")
+        return None
+    
+    return text_complet
+
 def imparte_text_in_bucati(text, dimensiune_chunk=4000):
     """
     Imparte un text urias in bucati mai mici (chunks).

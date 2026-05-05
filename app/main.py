@@ -6,7 +6,7 @@ import os
 
 # Importuri relative din pachetul 'app'
 from . import crud, models, schemas, database
-from .document_processor import extrage_text_din_toate_pdf, imparte_text_in_bucati
+from .document_processor import extrage_text_dintr_un_pdf, imparte_text_in_bucati
 from .ai_agents import genereaza_flashcards, evalueaza_raspuns
 from .utils import parseaza_flashcards_din_text
 
@@ -22,8 +22,8 @@ app = FastAPI(
 # --- CONFIGURARE CORS (Esențial pentru React) ---
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],  # Portul default de Vite
-    allow_credentials=True,
+    allow_origins=["*"],  # Temporar permitem toate originile
+    allow_credentials=False,  # Trebuie False când folosim "*"
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -57,9 +57,8 @@ async def upload_si_genereaza_flashcards(file: UploadFile = File(...)):
         shutil.copyfileobj(file.file, buffer)
 
     try:
-        # 1. Extragere text (Folosim logica ta existentă)
-        # Notă: Am adaptat aici să citească fișierul proaspăt salvat
-        text_document = extrage_text_din_toate_pdf(os.path.dirname(os.path.abspath(temp_path)))
+        # 1. Extragere text din PDF temporar
+        text_document = extrage_text_dintr_un_pdf(temp_path)
         
         if not text_document:
             raise HTTPException(status_code=500, detail="Nu s-a putut extrage text din PDF.")
@@ -84,7 +83,12 @@ async def upload_si_genereaza_flashcards(file: UploadFile = File(...)):
 
 # --- RUTE EVALUARE ---
 @app.post("/evaluate")
-def evalueaza_raspuns_utilizator(intrebare_id: int, raspuns_utilizator: str, raspuns_corect: str, severitate: int = 2):
+def evalueaza_raspuns_utilizator(
+    intrebare_id: int,
+    raspuns_utilizator: str,
+    raspuns_corect: str,
+    severitate: int = 2
+):
     """
     Primește un răspuns și îl evaluează folosind modelul NLP local.
     """
