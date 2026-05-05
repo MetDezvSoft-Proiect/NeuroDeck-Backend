@@ -22,165 +22,144 @@ Backend Framework     FastAPI + Uvicorn
 Database             SQLite (MVP) + SQLAlchemy ORM
 Validation           Pydantic v2
 PDF Processing       pypdf
-AI/ML                Ollama (Llama3) + sentence-transformers
-Semantic Analysis    sentence-transformers (paraphrase-multilingual-MiniLM-L12-v2)
-```
+# NeuroDeck Backend
 
-## 📁 Structura proiectului
+> API pentru generarea și evaluarea flashcards din documente PDF, cu suport AI pentru extragerea textului, creare de întrebări și evaluare semantică.
 
-```
+NeuroDeck Backend alimentează aplicația NeuroDeck și gestionează tot fluxul de la încărcarea PDF-ului până la răspunsul evaluat. Este un backend MVP, construit să fie simplu de pornit, clar de înțeles și ușor de extins.
+
+## Ce oferă
+
+| Funcționalitate | Ce face |
+|---|---|
+| Autentificare | Creează și gestionează conturi de utilizatori |
+| Upload PDF | Primește și procesează fișiere PDF |
+| Extragere text | Transformă documentele în conținut procesabil |
+| Generare flashcards | Creează întrebări automat cu AI (Ollama + Llama3) |
+| Evaluare răspunsuri | Compară răspunsurile utilizatorului cu textul sursă |
+| API RESTful | Returnează date JSON pentru frontend |
+
+## Stack tehnologic
+
+| Zonă | Tehnologie |
+|---|---|
+| Backend | FastAPI + Uvicorn |
+| Bază de date | SQLite (MVP) + SQLAlchemy ORM |
+| Validare | Pydantic v2 |
+| Procesare PDF | pypdf |
+| AI / ML | Ollama (Llama3) + sentence-transformers |
+| Similaritate semantică | paraphrase-multilingual-MiniLM-L12-v2 |
+
+## Structura proiectului
+
+```text
 app/
-├── main.py                 ⚙️  Aplicația FastAPI și rutele principale
-├── models.py               📊 Modelele SQLAlchemy (User, Document, Flashcard)
-├── schemas.py              📋 Scheme Pydantic pentru request/response
-├── crud.py                 🗄️  Operații pe baza de date
-├── database.py             🔌 Configurare SQLAlchemy și sesiuni
-├── document_processor.py    📖 Extragere și procesare text din PDF
-├── ai_agents.py            🤖 Generare flashcards și evaluare răspunsuri
-└── utils.py                🔧 Parsare output AI și formatare date
+├── main.py               Aplicația FastAPI și rutele principale
+├── models.py             Modelele SQLAlchemy (User, Document, Flashcard)
+├── schemas.py            Scheme Pydantic pentru request/response
+├── crud.py               Operații pe baza de date
+├── database.py           Configurare SQLAlchemy și sesiuni
+├── document_processor.py Extragere și procesare text din PDF
+├── ai_agents.py          Generare flashcards și evaluare răspunsuri
+└── utils.py              Parsare output AI și formatare date
 ```
 
-## 🔄 Fluxul aplicației
+## Cum funcționează
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│ 1️⃣  AUTENTIFICARE                                               │
-│     Utilizatorul se înregistrează/autentifică → POST /login    │
-├─────────────────────────────────────────────────────────────────┤
-│ 2️⃣  UPLOAD DOCUMENT                                             │
-│     Frontend trimite PDF → POST /upload                        │
-├─────────────────────────────────────────────────────────────────┤
-│ 3️⃣  PROCESARE DOCUMENT                                          │
-│     Backend: salvează, extrage text, împarte în chunksuri      │
-├─────────────────────────────────────────────────────────────────┤
-│ 4️⃣  GENERARE AI                                                 │
-│     Ollama (Llama3) generează întrebări & răspunsuri corect    │
-├─────────────────────────────────────────────────────────────────┤
-│ 5️⃣  FORMATARE                                                   │
-│     Conversie output AI în structură JSON de flashcards        │
-├─────────────────────────────────────────────────────────────────┤
-│ 6️⃣  EVALUARE RĂSPUNSURI                                         │
-│     Frontend trimite răspuns → POST /evaluate                  │
-│     Backend calculează similaritate semantică                   │
-├─────────────────────────────────────────────────────────────────┤
-│ 7️⃣  REZULTAT                                                    │
-│     Întoarce verdictul: ✅ CORECT / ❌ INCORECT                │
-└─────────────────────────────────────────────────────────────────┘
+```text
+1. Utilizatorul se autentifică sau își creează contul
+2. Frontendul trimite PDF-ul către backend
+3. Backendul salvează fișierul și extrage textul
+4. Ollama generează întrebările și răspunsurile
+5. Outputul AI este formatat în JSON de flashcards
+6. Utilizatorul trimite un răspuns pentru evaluare
+7. Backendul calculează similaritatea semantică și returnează verdictul
 ```
 
-## 🔌 API Endpointuri
+## Endpointuri API
 
 | Metoda | Endpoint | Descriere |
-|--------|----------|-----------|
+|---|---|---|
 | `GET` | `/` | Status check |
 | `POST` | `/users/` | Creare cont nou |
 | `POST` | `/login` | Autentificare utilizator |
 | `POST` | `/upload` | Upload PDF + generare flashcards |
 | `POST` | `/evaluate` | Evaluare răspuns utilizator |
 
-## 📊 Modelul de date
+## Modelul de date
 
-### Entități principale
+Backendul folosește trei entități principale:
 
-| Entitate | Descriere |
-|----------|-----------|
-| **User** | Cont utilizator cu credențiale |
-| **Document** | Fișier PDF încărcat + text extras |
-| **Flashcard** | Pereche întrebare-răspuns generată |
+- `User` pentru conturile utilizatorilor
+- `Document` pentru PDF-urile încărcate și textul extras
+- `Flashcard` pentru întrebările și răspunsurile generate
 
-### Relații
+Relații:
 
-```
-User (1) ──┬──→ (N) Document
-           └──→ (N) Flashcard (indirect prin Document)
+- un utilizator poate avea mai multe documente
+- un document poate avea mai multe flashcards
+- fiecare flashcard aparține unui document
 
-Document (1) ──→ (N) Flashcard
-```
+## Cerințe
 
-## 🚀 Instalare și rulare
+- Python 3.10 sau mai nou
+- un mediu virtual Python activ
+- Ollama instalat și pornit local
+- modelul `llama3` disponibil în Ollama
+- modelul `paraphrase-multilingual-MiniLM-L12-v2` disponibil pentru `sentence-transformers`
 
-### Cerințe
+## Instalare și rulare
 
-- **Python** 3.10+
-- **Mediu virtual** Python activ
-- **Ollama** instalat și pornit local
-- **Model Ollama**: `llama3`
-- **Model sentence-transformers**: `paraphrase-multilingual-MiniLM-L12-v2`
-
-### 1️⃣ Instalare dependențe
+Instalează dependențele și pornește serverul:
 
 ```bash
-# Creează și activează mediu virtual (dacă nu există)
-python -m venv venv
-source venv/bin/activate    # Linux/Mac
-# sau
-venv\Scripts\activate       # Windows
-
-# Instalează pachete
 pip install fastapi uvicorn sqlalchemy pydantic pydantic[email] pypdf ollama sentence-transformers
-```
-
-### 2️⃣ Verifică Ollama
-
-```bash
-# Asigură-te că Ollama rulează
-ollama pull llama3
-ollama serve
-```
-
-### 3️⃣ Pornire server
-
-```bash
 uvicorn app.main:app --reload
 ```
 
-✅ Backend va rula la `http://localhost:8000`
+Backendul va rula, de regulă, la `http://localhost:8000`.
 
-## 🔗 Integrare Frontend
+## Integrare cu frontendul
 
-Frontend-ul comunică cu backend-ul pe următoarele rute:
+Frontendul trimite cereri către acest backend la:
 
-```
-POST   http://localhost:8000/users/
-POST   http://localhost:8000/login
-POST   http://localhost:8000/upload
-POST   http://localhost:8000/evaluate
-GET    http://localhost:8000/
-```
+- `http://localhost:8000/login`
+- `http://localhost:8000/users/`
+- `http://localhost:8000/upload`
+- `http://localhost:8000/evaluate`
 
-⚠️ Dacă schimbi **port** sau **host**, actualizează `API_BASE_URL` în frontend.
+Dacă schimbi portul sau hostul, actualizează și `API_BASE_URL` din frontend.
 
-## ⚠️ Observații importante
+## Observații importante
 
-| ⚠️ Aspekt | 📝 Detaliu |
-|----------|-----------|
-| **Fișiere temporare** | PDF-uri salvate în `temp_pdfs/`, șterse după procesare |
-| **Autentificare MVP** | Parolă hash-uită basic, NU pentru producție |
-| **Evaluare răspunsuri** | Bazată pe similaritate semantică + nivel severitate |
-| **Database** | SQLite local; în producție trebuie PostgreSQL |
+- fișierele PDF sunt stocate temporar în folderul `temp_pdfs`
+- folderul temporar este șters după generarea flashcards-urilor
+- autentificarea din MVP folosește o parolă hash-uită simplificat, nu un mecanism de producție
+- scorul de evaluare depinde de similaritatea semantică și de nivelul de severitate ales
 
-## 👨‍💻 Dezvoltare locală
+## Dezvoltare locală
 
-### Setup rapid
+Pentru o iterație rapidă:
 
-1. Pornește Ollama cu `ollama serve`
-2. Asigură-te că `llama3` e descărcat: `ollama pull llama3`
-3. Pornește backend: `uvicorn app.main:app --reload`
-4. Pornește frontend și testează fluxul complet
+1. pornește Ollama local
+2. asigură-te că modelul `llama3` este descărcat
+3. pornește backendul cu `uvicorn app.main:app --reload`
+4. pornește frontendul și verifică fluxul complet de la upload la rezultate
 
-### Testing
+## Idei de îmbunătățire
 
-```bash
-# Verifică status backend
-curl http://localhost:8000/
+- hash criptografic real pentru parole
+- endpointuri dedicate pentru istoricul sesiunilor
+- salvarea flashcards-urilor în baza de date
+- suport pentru alte tipuri de documente
+- control mai bun al erorilor și validării fișierelor
+- configurare externă pentru URL-ul Ollama și baza de date
 
-# Teste manuale în `tests/` folder (dacă există)
-```
+## Notă
 
-## 🔮 Posibile îmbunătățiri
+Acesta este un backend MVP, optimizat pentru a demonstra fluxul complet de la document PDF la flashcards și evaluare. Pentru producție, sunt necesare îmbunătățiri de securitate, configurare și observabilitate.
 
-- [ ] Hash criptografic real pentru parole (bcrypt/argon2)
-- [ ] Endpointuri dedicate pentru istoricul sesiunilor
+Ultima actualizare: 2026-05-06.
 - [ ] Salvarea flashcards-urilor persistente în DB
 - [ ] Suport pentru alte tipuri de documente (DOCX, PPTX, etc.)
 - [ ] Validare robustă și error handling
