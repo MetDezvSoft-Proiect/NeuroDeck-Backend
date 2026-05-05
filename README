@@ -127,3 +127,5 @@ Pentru o iterație rapidă:
 ## Notă
 
 Acesta este un backend de MVP, optimizat pentru a demonstra fluxul complet de la document PDF la flashcards și evaluare. Pentru producție, sunt necesare îmbunătățiri de securitate, configurare și observabilitate.
+
+Ultima actualizare: 2026-05-06.
