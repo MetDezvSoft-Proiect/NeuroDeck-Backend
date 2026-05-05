@@ -6,7 +6,6 @@ import shutil
 import os
 
 from . import crud, models, schemas, database
-# Folosim funcția care știe să citească toate PDF-urile dintr-un folder[cite: 4]
 from .document_processor import extrage_text_din_toate_pdf, imparte_text_in_bucati
 from .ai_agents import genereaza_flashcards, evalueaza_raspuns
 from .utils import parseaza_flashcards_din_text
@@ -30,7 +29,7 @@ def citeste_status():
 # --- RUTE AUTENTIFICARE ---
 @app.post("/users/", response_model=schemas.UserResponse)
 def register_user(user: schemas.UserCreate, db: Session = Depends(database.get_db)):
-    """Creează un utilizator nou[cite: 2]"""
+    """Creează un utilizator nou"""
     db_user = crud.get_user_by_email(db, email=user.email)
     if db_user:
         raise HTTPException(status_code=400, detail="Email-ul este deja înregistrat")
@@ -40,7 +39,6 @@ def register_user(user: schemas.UserCreate, db: Session = Depends(database.get_d
 def login_user(user: schemas.UserCreate, db: Session = Depends(database.get_db)):
     """Verifică datele de logare"""
     db_user = crud.get_user_by_email(db, email=user.email)
-    # Logica MVP de verificare a parolei cu hash-ul falsificat din crud.py[cite: 2]
     fake_hashed_password = user.password + "notreallyhashed"
     
     if not db_user or db_user.hashed_password != fake_hashed_password:
@@ -48,18 +46,63 @@ def login_user(user: schemas.UserCreate, db: Session = Depends(database.get_db))
     
     return {"mesaj": "Logare cu succes", "user_id": db_user.id, "email": db_user.email}
 
-# --- RUTE AI & DOCUMENTE MULTIPLE ---
+# --- RUTE STUDY SESSIONS (NOU) ---
+@app.post("/sessions", response_model=schemas.StudySessionResponse)
+def create_session(session: schemas.StudySessionCreate, user_id: int = Form(...), db: Session = Depends(database.get_db)):
+    """Creează o nouă sesiune de studiu"""
+    return crud.create_study_session(db, session, user_id)
+
+@app.get("/sessions/{user_id}")
+def get_user_sessions(user_id: int, db: Session = Depends(database.get_db)):
+    """Listează toate sesiunile unui utilizator"""
+    sessions = crud.get_user_study_sessions(db, user_id)
+    return {"sessions": sessions}
+
+@app.get("/sessions/detail/{session_id}", response_model=schemas.StudySessionWithFlashcards)
+def get_session_detail(session_id: int, db: Session = Depends(database.get_db)):
+    """Obține detalii sesiune cu flashcards"""
+    session = crud.get_study_session_with_flashcards(db, session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Sesiune nu găsită")
+    return session
+
+@app.put("/sessions/{session_id}", response_model=schemas.StudySessionResponse)
+def update_session(session_id: int, session_update: schemas.StudySessionCreate, db: Session = Depends(database.get_db)):
+    """Actualizează titlul unei sesiuni"""
+    updated = crud.update_study_session(db, session_id, session_update)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Sesiune nu găsită")
+    return updated
+
+@app.delete("/sessions/{session_id}")
+def delete_session(session_id: int, db: Session = Depends(database.get_db)):
+    """Șterge o sesiune și flashcards-urile ei"""
+    deleted = crud.delete_study_session(db, session_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Sesiune nu găsită")
+    return {"mesaj": "Sesiune ștearsă cu succes"}
+
+# --- RUTE AI & DOCUMENTE MULTIPLE (MODIFICAT) ---
 @app.post("/upload")
 async def upload_si_genereaza_flashcards(
-    files: List[UploadFile] = File(...), # NOU: Primește o listă de fișiere
-    numar_intrebari: int = Form(...)
+    files: List[UploadFile] = File(...),
+    numar_intrebari: int = Form(...),
+    session_id: int = Form(...),
+    user_id: int = Form(...),
+    db: Session = Depends(database.get_db)
 ):
+    """Upload PDF și generează flashcards salvate în DB"""
     temp_folder = "temp_pdfs"
     os.makedirs(temp_folder, exist_ok=True)
     
     try:
+        # Verifică dacă sesiunea există și aparține utilizatorului
+        session = crud.get_study_session(db, session_id)
+        if not session or session.user_id != user_id:
+            raise HTTPException(status_code=403, detail="Acces interzis la această sesiune")
+
         nume_fisiere = []
-        # Salvăm toate PDF-urile primite în folderul temporar
+        # Salvează toate PDF-urile
         for file in files:
             if file.filename.endswith(".pdf"):
                 nume_fisiere.append(file.filename)
@@ -70,26 +113,51 @@ async def upload_si_genereaza_flashcards(
         if not nume_fisiere:
              raise HTTPException(status_code=400, detail="Nu ai încărcat niciun PDF.")
 
-        # Extragem textul combinat din toate fișierele[cite: 4]
+        # Extrage textul din toate fișierele
         text_document = extrage_text_din_toate_pdf(temp_folder)
         
         if not text_document or not text_document.strip():
             raise HTTPException(status_code=500, detail="Nu s-a putut extrage text din PDF-uri.")
 
+        # Salvează documentul în DB
+        doc_schema = schemas.DocumentCreate(
+            title=", ".join(nume_fisiere),
+            content=text_document
+        )
+        db_document = crud.create_user_document(db, doc_schema, user_id, session_id)
+
+        # Generează flashcards și salvează în DB
         bucati = imparte_text_in_bucati(text_document, dimensiune_chunk=4000)
         flashcards_text = genereaza_flashcards(bucati[0], numar_intrebari=numar_intrebari)
         flashcards_finale = parseaza_flashcards_din_text(flashcards_text)
 
+        # Salvează flashcards în DB
+        saved_flashcards = []
+        for fc in flashcards_finale:
+            fc_schema = schemas.FlashcardCreate(
+                question=fc["intrebare"],
+                correct_answer=fc["raspuns"]
+            )
+            db_fc = crud.create_flashcard(db, fc_schema, db_document.id, session_id)
+            saved_flashcards.append({
+                "id": db_fc.id,
+                "intrebare": db_fc.question,
+                "raspuns": db_fc.correct_answer
+            })
+
         return {
             "filenames": nume_fisiere,
-            "flashcards": flashcards_finale
+            "document_id": db_document.id,
+            "session_id": session_id,
+            "flashcards": saved_flashcards
         }
 
+    except HTTPException as http_ex:
+        raise http_ex
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     
     finally:
-        # Ștergem întregul folder temporar
         shutil.rmtree(temp_folder, ignore_errors=True)
 
 # --- RUTE EVALUARE ---

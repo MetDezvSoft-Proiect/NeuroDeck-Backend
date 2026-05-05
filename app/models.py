@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Text
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from .database import Base
@@ -9,8 +9,23 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String, unique=True, index=True)
     hashed_password = Column(String)
-    # Relația:un utilizator are mai multe documente
+    # Relații: un utilizator are mai multe sesiuni de studiu
+    study_sessions = relationship("StudySession", back_populates="owner")
     documents = relationship("Document", back_populates="owner")
+
+
+#Tabelul pentru Sesiuni de Studiu (NOU)
+class StudySession(Base):
+    __tablename__ = "study_sessions"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    title = Column(String, index=True)  # Ex: "Informatica", "Matematica"
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    # Relații
+    owner = relationship("User", back_populates="study_sessions")
+    documents = relationship("Document", back_populates="session")
+    flashcards = relationship("Flashcard", back_populates="session")
 
 
 #Tabelul pentru Documentele încărcate (Cursuri/PDF-uri)
@@ -18,12 +33,14 @@ class Document(Base):
     __tablename__ = "documents"
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String, index=True)
-    content = Column(String) # Aici salvăm textul brut extras din PDF
+    content = Column(Text)
     upload_date = Column(DateTime, default=datetime.utcnow)
-    #Cheia externă: leagă documentul de ID-ul utilizatorului
+    #Chei externe
     user_id = Column(Integer, ForeignKey("users.id"))
-    #Relațiile bidirecționale
+    session_id = Column(Integer, ForeignKey("study_sessions.id"), nullable=True)
+    #Relații
     owner = relationship("User", back_populates="documents")
+    session = relationship("StudySession", back_populates="documents")
     flashcards = relationship("Flashcard", back_populates="document")
 
 
@@ -33,7 +50,10 @@ class Flashcard(Base):
     id = Column(Integer, primary_key=True, index=True)
     question = Column(String, index=True)
     correct_answer = Column(String)
-    # Cheia externă:leagă flashcard-ul de ID-ul documentului
+    created_at = Column(DateTime, default=datetime.utcnow)
+    # Chei externe
     document_id = Column(Integer, ForeignKey("documents.id"))
-    #Relația inversă
+    session_id = Column(Integer, ForeignKey("study_sessions.id"), nullable=True)
+    #Relații
     document = relationship("Document", back_populates="flashcards")
+    session = relationship("StudySession", back_populates="flashcards")

@@ -6,37 +6,65 @@ from datetime import datetime
 class FlashcardBase(BaseModel):
     question: str
     correct_answer: str
-#Schema folosită când creăm un flashcard nou
+
 class FlashcardCreate(FlashcardBase):
     pass
-#Schema folosită când trimitem datele înapoi către Frontend (include ID-ul)
+
 class FlashcardResponse(FlashcardBase):
     id: int
     document_id: int
+    session_id: Optional[int] = None
+    created_at: datetime
     class Config:
-        from_attributes = True  #Permite lui Pydantic să citească din SQLAlchemy
+        from_attributes = True
 
-#SCHEME PENTRU DOCUMENTE
+# SCHEME PENTRU SESIUNI DE STUDIU (NOU)
+class StudySessionBase(BaseModel):
+    title: str
+
+class StudySessionCreate(StudySessionBase):
+    pass
+
+class StudySessionResponse(StudySessionBase):
+    id: int
+    user_id: int
+    created_at: datetime
+    updated_at: datetime
+    class Config:
+        from_attributes = True
+
+class StudySessionWithFlashcards(StudySessionResponse):
+    flashcards: List[FlashcardResponse] = []
+    class Config:
+        from_attributes = True
+
+# SCHEME PENTRU DOCUMENTE
 class DocumentBase(BaseModel):
     title: str
     content: str
+
 class DocumentCreate(DocumentBase):
     pass
+
 class DocumentResponse(DocumentBase):
     id: int
     upload_date: datetime
     user_id: int
-    flashcards: List[FlashcardResponse] = [] #Un document vine la pachet cu cardurile lui
+    session_id: Optional[int] = None
+    flashcards: List[FlashcardResponse] = []
     class Config:
         from_attributes = True
 
-#SCHEME PENTRU UTILIZATORI
+# SCHEME PENTRU UTILIZATORI
 class UserBase(BaseModel):
-    email: EmailStr #Validează automat dacă este un email corect
+    email: EmailStr
+
 class UserCreate(UserBase):
-    password: str #Când creăm contul, cerem parola
+    password: str
+
 class UserResponse(UserBase):
     id: int
-    documents: List[DocumentResponse] = [] #Nu trimitem parola înapoi la Frontend, doar datele sigure
+    study_sessions: List[StudySessionResponse] = []
+    documents: List[DocumentResponse] = []
     class Config:
         from_attributes = True
