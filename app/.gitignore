@@ -1,0 +1,14 @@
+# Ignoră cache-ul Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Ignoră mediul virtual (dacă e în folderul proiectului)
+venv/
+env/
+
+# Ignoră fișierele temporare și baza de date locală (opțional, dar recomandat)
+temp_pdfs/
+*.db
+.env
