@@ -25,6 +25,9 @@ class StudySessionBase(BaseModel):
 class StudySessionCreate(StudySessionBase):
     pass
 
+class StudySessionCreateRequest(StudySessionBase):
+    user_id: int
+
 class StudySessionResponse(StudySessionBase):
     id: int
     user_id: int

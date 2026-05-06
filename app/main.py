@@ -47,10 +47,18 @@ def login_user(user: schemas.UserCreate, db: Session = Depends(database.get_db))
     return {"mesaj": "Logare cu succes", "user_id": db_user.id, "email": db_user.email}
 
 # --- RUTE STUDY SESSIONS (NOU) ---
-@app.post("/sessions", response_model=schemas.StudySessionResponse)
-def create_session(session: schemas.StudySessionCreate, user_id: int = Form(...), db: Session = Depends(database.get_db)):
+@app.post("/sessions")
+def create_session(
+    title: str = Form(...),
+    user_id: int = Form(...),
+    db: Session = Depends(database.get_db)
+):
     """Creează o nouă sesiune de studiu"""
-    return crud.create_study_session(db, session, user_id)
+    try:
+        session_data = schemas.StudySessionCreate(title=title)
+        return crud.create_study_session(db, session_data, user_id)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 @app.get("/sessions/{user_id}")
 def get_user_sessions(user_id: int, db: Session = Depends(database.get_db)):
@@ -104,14 +112,14 @@ async def upload_si_genereaza_flashcards(
         nume_fisiere = []
         # Salvează toate PDF-urile
         for file in files:
-            if file.filename.endswith(".pdf"):
+            if file.filename and file.filename.endswith(".pdf"):
                 nume_fisiere.append(file.filename)
                 file_path = os.path.join(temp_folder, file.filename)
                 with open(file_path, "wb") as buffer:
                     shutil.copyfileobj(file.file, buffer)
         
         if not nume_fisiere:
-             raise HTTPException(status_code=400, detail="Nu ai încărcat niciun PDF.")
+            raise HTTPException(status_code=400, detail="Nu ai încărcat niciun PDF valid.")
 
         # Extrage textul din toate fișierele
         text_document = extrage_text_din_toate_pdf(temp_folder)
@@ -126,24 +134,40 @@ async def upload_si_genereaza_flashcards(
         )
         db_document = crud.create_user_document(db, doc_schema, user_id, session_id)
 
-        # Generează flashcards și salvează în DB
-        bucati = imparte_text_in_bucati(text_document, dimensiune_chunk=4000)
-        flashcards_text = genereaza_flashcards(bucati[0], numar_intrebari=numar_intrebari)
-        flashcards_finale = parseaza_flashcards_din_text(flashcards_text)
+        # Generează flashcards
+        try:
+            bucati = imparte_text_in_bucati(text_document, dimensiune_chunk=4000)
+            if not bucati:
+                raise HTTPException(status_code=500, detail="Nu s-a putut procesa textul.")
+            
+            flashcards_text = genereaza_flashcards(bucati[0], numar_intrebari=numar_intrebari)
+            flashcards_finale = parseaza_flashcards_din_text(flashcards_text)
+            
+            if not flashcards_finale:
+                raise HTTPException(status_code=500, detail="AI-ul nu a putut genera flashcards. Asigură-te că Ollama e pornit.")
+        except Exception as ai_error:
+            raise HTTPException(
+                status_code=500, 
+                detail=f"Eroare AI: {str(ai_error)}. Asigură-te că Ollama (ollama serve) e pornit și că modelul llama3 e disponibil."
+            )
 
         # Salvează flashcards în DB
         saved_flashcards = []
         for fc in flashcards_finale:
-            fc_schema = schemas.FlashcardCreate(
-                question=fc["intrebare"],
-                correct_answer=fc["raspuns"]
-            )
-            db_fc = crud.create_flashcard(db, fc_schema, db_document.id, session_id)
-            saved_flashcards.append({
-                "id": db_fc.id,
-                "intrebare": db_fc.question,
-                "raspuns": db_fc.correct_answer
-            })
+            try:
+                fc_schema = schemas.FlashcardCreate(
+                    question=fc.get("intrebare", ""),
+                    correct_answer=fc.get("raspuns", "")
+                )
+                db_fc = crud.create_flashcard(db, fc_schema, db_document.id, session_id)
+                saved_flashcards.append({
+                    "id": db_fc.id,
+                    "intrebare": db_fc.question,
+                    "raspuns": db_fc.correct_answer
+                })
+            except Exception as fc_error:
+                print(f"Eroare salvare flashcard: {fc_error}")
+                continue
 
         return {
             "filenames": nume_fisiere,
@@ -155,7 +179,8 @@ async def upload_si_genereaza_flashcards(
     except HTTPException as http_ex:
         raise http_ex
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"Eroare upload: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Eroare: {str(e)}")
     
     finally:
         shutil.rmtree(temp_folder, ignore_errors=True)
