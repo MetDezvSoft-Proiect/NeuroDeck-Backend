@@ -1,0 +1,43 @@
+# Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+.env/
+.env
+.env.*
+.venv/
+
+# Database files
+*.db
+*.sqlite3
+*.sqlite
+
+# IDE/editor directories
+.vscode/
+.idea/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs and temporary files
+*.log
+*.tmp
+*.temp
+
+# Test output
+.pytest_cache/
+
+# PDF/temp upload folders
+temp_pdfs/
+
+# Ollama/cache or downloads (if any)
+ollama-cache/
+*ollama*
