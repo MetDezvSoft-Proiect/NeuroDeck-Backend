@@ -1,0 +1,2 @@
+# Dependinte pentru rularea testelor automate
+pytest>=8.0
