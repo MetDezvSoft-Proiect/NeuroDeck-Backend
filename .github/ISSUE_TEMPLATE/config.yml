@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: 📋 Backlog de produs
+    url: https://github.com/MetDezvSoft-Proiect/NeuroDeck-Backend/blob/main/docs/BACKLOG.md
+    about: Vezi backlog-ul complet cu toate epicele și user story-urile.
+  - name: 📑 Specificații (SRS)
+    url: https://github.com/MetDezvSoft-Proiect/NeuroDeck-Backend/blob/main/docs/SPECIFICATII.md
+    about: Vezi specificațiile software ale produsului.
