@@ -24,8 +24,8 @@ class StudySession(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     # Relații
     owner = relationship("User", back_populates="study_sessions")
-    documents = relationship("Document", back_populates="session")
-    flashcards = relationship("Flashcard", back_populates="session")
+    documents = relationship("Document", back_populates="session", cascade="all, delete-orphan")
+    flashcards = relationship("Flashcard", back_populates="session", cascade="all, delete-orphan")
 
 
 #Tabelul pentru Documentele încărcate (Cursuri/PDF-uri)

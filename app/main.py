@@ -1,5 +1,5 @@
 from typing import List
-from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Form
+from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Form, Query
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 import shutil
@@ -60,12 +60,7 @@ def create_session(
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-@app.get("/sessions/{user_id}")
-def get_user_sessions(user_id: int, db: Session = Depends(database.get_db)):
-    """Listează toate sesiunile unui utilizator"""
-    sessions = crud.get_user_study_sessions(db, user_id)
-    return {"sessions": sessions}
-
+# Bug #1: ruta cu path fix /detail/{id} trebuie să fie ÎNAINTE de /{user_id}
 @app.get("/sessions/detail/{session_id}", response_model=schemas.StudySessionWithFlashcards)
 def get_session_detail(session_id: int, db: Session = Depends(database.get_db)):
     """Obține detalii sesiune cu flashcards"""
@@ -73,6 +68,13 @@ def get_session_detail(session_id: int, db: Session = Depends(database.get_db)):
     if not session:
         raise HTTPException(status_code=404, detail="Sesiune nu găsită")
     return session
+
+# Bug #2: adăugat response_model pentru serializare corectă Pydantic
+@app.get("/sessions/{user_id}", response_model=schemas.SessionsListResponse)
+def get_user_sessions(user_id: int, db: Session = Depends(database.get_db)):
+    """Listează toate sesiunile unui utilizator"""
+    sessions = crud.get_user_study_sessions(db, user_id)
+    return {"sessions": sessions}
 
 @app.put("/sessions/{session_id}", response_model=schemas.StudySessionResponse)
 def update_session(session_id: int, session_update: schemas.StudySessionCreate, db: Session = Depends(database.get_db)):
@@ -101,8 +103,10 @@ async def upload_si_genereaza_flashcards(
 ):
     """Upload PDF și generează flashcards salvate în DB"""
     temp_folder = "temp_pdfs"
+    # Bug #4: curățăm folderul înainte de fiecare upload nou
+    shutil.rmtree(temp_folder, ignore_errors=True)
     os.makedirs(temp_folder, exist_ok=True)
-    
+
     try:
         # Verifică dacă sesiunea există și aparține utilizatorului
         session = crud.get_study_session(db, session_id)
@@ -186,7 +190,12 @@ async def upload_si_genereaza_flashcards(
         shutil.rmtree(temp_folder, ignore_errors=True)
 
 # --- RUTE EVALUARE ---
+# Bug #6: eliminat intrebare_id inutil, adăugat Query() pentru documentare explicită în Swagger
 @app.post("/evaluate")
-def evalueaza_raspuns_utilizator(intrebare_id: int, raspuns_utilizator: str, raspuns_corect: str, severitate: int = 2):
+def evalueaza_raspuns_utilizator(
+    raspuns_utilizator: str = Query(...),
+    raspuns_corect: str = Query(...),
+    severitate: int = Query(2)
+):
     scor = evalueaza_raspuns(raspuns_corect, raspuns_utilizator, severitate)
-    return { "scor": scor, "status": "CORECT" if scor >= 70 else "INCORECT" }
+    return {"scor": scor, "status": "CORECT" if scor >= 70 else "INCORECT"}

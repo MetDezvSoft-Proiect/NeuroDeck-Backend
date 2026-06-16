@@ -3,18 +3,24 @@ from sentence_transformers import SentenceTransformer, util
 import os
 import socket
 
-print("⏳ Se incarca modelul NLP pentru evaluare...")
-evaluator_model = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
+_evaluator_model = None
+
+def _get_evaluator():
+    global _evaluator_model
+    if _evaluator_model is None:
+        print("Se incarca modelul NLP pentru evaluare...")
+        _evaluator_model = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
+    return _evaluator_model
 
 def check_ollama_available():
     """Verifică dacă Ollama e accessible pe localhost:11434"""
     try:
         sock = socket.create_connection(("127.0.0.1", 11434), timeout=2)
         sock.close()
-        print("✅ Ollama e disponibil pe localhost:11434")
+        print("Ollama e disponibil pe localhost:11434")
         return True
-    except (socket.timeout, socket.error):
-        print("⚠️  Ollama NU e disponibil. Voi folosi mock data pentru testing.")
+    except Exception:
+        print("Ollama NU e disponibil. Voi folosi mock data pentru testing.")
         return False
 
 OLLAMA_AVAILABLE = check_ollama_available()
@@ -33,15 +39,15 @@ def genereaza_flashcards(text_suport, numar_intrebari):
     """
     
     if not OLLAMA_AVAILABLE:
-        print("ℹ️  Folosesc mock flashcards pentru testing...")
+        print("Folosesc mock flashcards pentru testing...")
         return generate_mock_flashcards(text_suport, numar_intrebari)
     
     try:
         response = ollama.chat(model='llama3', messages=[{'role': 'user', 'content': prompt}])
         return response['message']['content']
     except Exception as e:
-        print(f"⚠️  Eroare la Ollama: {e}")
-        print(f"ℹ️  Revin la mock flashcards...")
+        print(f"Eroare la Ollama: {e}")
+        print("Revin la mock flashcards...")
         return generate_mock_flashcards(text_suport, numar_intrebari)
 
 def generate_mock_flashcards(text_suport, numar_intrebari):
@@ -65,8 +71,9 @@ def generate_mock_flashcards(text_suport, numar_intrebari):
     return "\n\n".join(mock_pairs[:numar_intrebari])
 
 def evalueaza_raspuns(raspuns_corect, raspuns_student, nivel_severitate):
-    embedding_corect = evaluator_model.encode(raspuns_corect, convert_to_tensor=True)
-    embedding_student = evaluator_model.encode(raspuns_student, convert_to_tensor=True)
+    model = _get_evaluator()
+    embedding_corect = model.encode(raspuns_corect, convert_to_tensor=True)
+    embedding_student = model.encode(raspuns_student, convert_to_tensor=True)
     
     similaritate = util.cos_sim(embedding_corect, embedding_student).item()
     scor_brut = max(0, similaritate * 100)

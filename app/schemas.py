@@ -41,6 +41,9 @@ class StudySessionWithFlashcards(StudySessionResponse):
     class Config:
         from_attributes = True
 
+class SessionsListResponse(BaseModel):
+    sessions: List[StudySessionResponse] = []
+
 # SCHEME PENTRU DOCUMENTE
 class DocumentBase(BaseModel):
     title: str
