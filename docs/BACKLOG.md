@@ -135,3 +135,5 @@ Acest backlog conține toate **epicele** și **user story-urile** produsului Neu
 ## 🔗 Documente conexe
 - 📑 [Specificații (SRS)](SPECIFICATII.md)
 - 🏃 [Planificare sprinturi](SPRINTURI.md)
+- 📊 [Diagrame UML si workflow-uri](DIAGRAME.md)
+- 🤖 [Raport folosire instrumente AI](RAPORT_AI_TOOLS.md)
