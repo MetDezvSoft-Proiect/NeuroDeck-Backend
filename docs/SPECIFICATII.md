@@ -111,7 +111,19 @@ Fiecare cerință are un identificator `RF-xx` și este urmărită în [`BACKLOG
 | Generare AI | Ollama (Llama3) |
 | Similaritate semantică | sentence-transformers (`paraphrase-multilingual-MiniLM-L12-v2`) |
 
-### 5.1 Fluxul principal
+### 5.1 Design Patterns aplicate
+
+| Pattern | Fisier | Rol |
+|---|---|---|
+| **Repository Pattern** | `app/crud.py` | Abstractizeaza accesul la date; rutele nu scriu SQL direct |
+| **DTO Pattern** (Pydantic Schemas) | `app/schemas.py` | Separa modelele interne de datele expuse prin API |
+| **Dependency Injection** | `app/main.py` + `app/database.py` | Sesiunile DB sunt injectate automat de FastAPI via `Depends()` |
+| **Lazy Initialization** | `app/ai_agents.py` | Modelul SentenceTransformer se incarca doar la primul apel `/evaluate` |
+| **Facade Pattern** | `app/main.py` (`POST /upload`) | Ascunde complexitatea celor 4 subsisteme (PDF, AI, parser, DB) |
+
+> Vezi detalii complete cu exemple de cod in [`docs/DESIGN_PATTERNS.md`](DESIGN_PATTERNS.md).
+
+### 5.2 Fluxul principal
 ```text
 1. Utilizatorul se autentifică / își creează contul
 2. Creează o sesiune de studiu

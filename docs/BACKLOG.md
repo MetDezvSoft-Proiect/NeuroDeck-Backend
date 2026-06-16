@@ -137,3 +137,4 @@ Acest backlog conține toate **epicele** și **user story-urile** produsului Neu
 - 🏃 [Planificare sprinturi](SPRINTURI.md)
 - 📊 [Diagrame UML si workflow-uri](DIAGRAME.md)
 - 🤖 [Raport folosire instrumente AI](RAPORT_AI_TOOLS.md)
+- 🧩 [Design Patterns aplicate](DESIGN_PATTERNS.md)
